@@ -6,7 +6,7 @@ define(function(require, exports, module) {
 	var Workspace = require('code/workspace');
 	var Notification = require('code/notification');
 	
-	var Less = require('libs/less/less');
+	var Less = require('./less');
 	
 	var EditorSession = require('modules/editor/ext/session');
 	
