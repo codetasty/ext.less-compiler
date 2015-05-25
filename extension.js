@@ -22,6 +22,73 @@ define(function(require, exports, module) {
 					Extension.compile(data.session.workspaceId, data.session.path, data.data.getValue());
 				}
 			});
+			
+			this.checkCache();
+		},
+		cache: [],
+		getCache: function(workspaceId, path, c) {
+			var found = false;
+			var self = this;
+			
+			this.cache.every(function(cache) {
+				if (cache.workspaceId == workspaceId && cache.path == path) {
+					found = true;
+					
+					cache.lastUsed = new Date().getTime();
+					c(cache.data);
+					
+					return false;
+				}
+				
+				return true;
+			});
+			
+			if (!found) {
+				Socket.send('workspace.action', {
+					action: 'get',
+					id: workspaceId,
+					path: path,
+					forceRemote: true,
+					revision: true,
+				}, false, function(data, stream) {
+					var file = '';
+					if (stream) {
+						stream.on('data', function(chunk) {
+							file += chunk;
+						});
+						
+						stream.on('end', function() {
+							self.addCache(workspaceId, path, file);
+							c(file);
+						});
+					} else {
+						self.addCache(workspaceId, path, file);
+						c(file);
+					}
+				});
+			}
+		},
+		addCache: function(workspaceId, path, file) {
+			this.cache.push({
+				workspaceId: workspaceId,
+				path: path,
+				data: file,
+				lastUsed: new Date().getTime()
+			});
+		},
+		checkCache: function() {
+			var self = this;
+			
+			var cacheTime = new Date().getTime();
+			cacheTime -= 180*1000;
+			
+			this.cache = this.cache.filter(function (value, index, array) {
+				return (value.lastUsed > cacheTime);
+			});
+			
+			setTimeout(function() {
+				self.checkCache();
+			}, 10000);
 		},
 		getOptions: function(content) {
 			var firstLine = content.substr(0, content.indexOf('\n'));
@@ -46,24 +113,18 @@ define(function(require, exports, module) {
 			});
 			return options;
 		},
-		compile: function(workspaceId, path, doc) {
-			var options = this.getOptions(doc);
+		parsePath: function(path, out, canBeSame) {
+			var destination = out;
 			
-			if (!options.out) {
-				return false;
-			}
-			
-			var destination = options.out;
-			
-			if (destination == '.') {
+			if (destination == '.' && canBeSame) {
 				destination = path.replace(/less$/, 'css');
-			} else if (options.out.substr(0, 1) == '/') {
-				destination = options.out;
+			} else if (out.substr(0, 1) == '/') {
+				destination = out;
 			} else {
 				destination = path.split('/');
 				destination.pop();
 				destination = destination.join('/');
-				destination += '/' + options.out;
+				destination += '/' + out;
 			}
 			
 			destination = destination.replace(/\/\.\//gi, '/').split('/');
@@ -84,10 +145,34 @@ define(function(require, exports, module) {
 			
 			destination = destination.join('/').replace(/([\/]+)/gi, '/');
 			
+			return destination;
+		},
+		compile: function(workspaceId, path, doc) {
+			var self = this;
+			var options = this.getOptions(doc);
+			
+			if (!options.out) {
+				return false;
+			}
+			
+			var destination = this.parsePath(path, options.out, true);
+			
 			if (!destination) {
 				return false;
 			}
 			
+			var mainFile = options.main ? this.parsePath(path, options.main, false) : null;
+			
+			if (!mainFile) {
+				this.render(workspaceId, path, doc, options, destination);
+			} else {
+				this.getCache(workspaceId, mainFile, function(data) {
+					doc = data + doc;
+					self.render(workspaceId, path, doc, options, destination);
+				});
+			}
+		},
+		render: function(workspaceId, path, doc, options, destination) {
 			Less.render(doc, {
 				filename: path,
 				compress: typeof options.compress != 'undefined' ? options.compress : true
