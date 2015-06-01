@@ -5,6 +5,7 @@ define(function(require, exports, module) {
 	var Socket = require('code/socket');
 	var Workspace = require('code/workspace');
 	var Notification = require('code/notification');
+	var Fn = require('code/fn');
 	
 	var Less = require('./less');
 	
@@ -15,6 +16,23 @@ define(function(require, exports, module) {
 		
 	}, {
 		init: function() {
+			Less.FileManager.prototype.loadFile = function(filename, currentDirectory, options, environment, callback) {
+				var ext = Fn.pathinfo(Extension.importPath).extension;
+				var reqExt = Fn.pathinfo(filename).extension;
+				
+				var toLoad = filename;
+				
+				if (!reqExt) {
+					toLoad += '.' + ext;
+				}
+				
+				toLoad = Extension.parsePath(Extension.importPath, toLoad);
+				
+				Extension.getCache(Extension.importWorkspace, toLoad, function(data) {
+					callback(null, { contents: data, filename: toLoad, webInfo: { lastModified: new Date() }});
+				});
+			};
+			
 			EditorSession.on('save', function(data) {
 				// var sess = EditorSession.sessions[data.id];
 				
@@ -25,6 +43,8 @@ define(function(require, exports, module) {
 			
 			this.checkCache();
 		},
+		importWorkspace: null,
+		importPath: '',
 		cache: [],
 		getCache: function(workspaceId, path, c) {
 			var found = false;
@@ -145,6 +165,10 @@ define(function(require, exports, module) {
 			
 			destination = destination.join('/').replace(/([\/]+)/gi, '/');
 			
+			if (destination == path) {
+				return false;
+			}
+			
 			return destination;
 		},
 		compile: function(workspaceId, path, doc) {
@@ -173,9 +197,12 @@ define(function(require, exports, module) {
 			}
 		},
 		render: function(workspaceId, path, doc, options, destination) {
+			Extension.importWorkspace = workspaceId;
+			Extension.importPath = path;
 			Less.render(doc, {
 				filename: path,
-				compress: typeof options.compress != 'undefined' ? options.compress : true
+				compress: typeof options.compress != 'undefined' ? options.compress : true,
+				async: true,
 			}, function(e, output) {
 				if (e) {
 					Notification.open({

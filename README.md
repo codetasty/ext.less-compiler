@@ -21,3 +21,7 @@ compress: compress compiled file?
 main: adds a master file before compiled file
 
     // main: main.less, ../master.less
+
+importing files
+
+    @import "variables";
