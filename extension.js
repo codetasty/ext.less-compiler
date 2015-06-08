@@ -37,6 +37,11 @@ define(function(require, exports, module) {
 				// var sess = EditorSession.sessions[data.id];
 				
 				if (data.session.extension == 'less') {
+					var cache = Extension.cacheExists(data.session.workspaceId, data.session.path);
+					if (cache) {
+						cache.data = EditorSession.sessions[data.id].lastSavedValue;
+					}
+					
 					Extension.compile(data.session.workspaceId, data.session.path, data.data.getValue());
 				}
 			});
@@ -87,6 +92,22 @@ define(function(require, exports, module) {
 					}
 				});
 			}
+		},
+		cacheExists: function(workspaceId, path) {
+			var found = false;
+			var self = this;
+			
+			this.cache.every(function(cache) {
+				if (cache.workspaceId == workspaceId && cache.path == path) {
+					found = cache;
+					
+					return false;
+				}
+				
+				return true;
+			});
+			
+			return found;
 		},
 		addCache: function(workspaceId, path, file) {
 			this.cache.push({
