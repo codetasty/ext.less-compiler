@@ -207,8 +207,7 @@ define(function(require, exports, module) {
 			}
 			
 			//var mainFile = options.main ? this.parsePath(path, options.main, false) : null;
-			
-			if (!destination.match('/\.less$/')) {
+			if (!destination.match(/\.less$/)) {
 				this.render(workspaceId, path, doc, options, destination);
 			} else {
 				this.getCache(workspaceId, destination, function(data) {
