@@ -206,14 +206,13 @@ define(function(require, exports, module) {
 				return false;
 			}
 			
-			var mainFile = options.main ? this.parsePath(path, options.main, false) : null;
+			//var mainFile = options.main ? this.parsePath(path, options.main, false) : null;
 			
-			if (!mainFile) {
+			if (!destination.match('/\.less$/')) {
 				this.render(workspaceId, path, doc, options, destination);
 			} else {
-				this.getCache(workspaceId, mainFile, function(data) {
-					doc = data + doc;
-					self.render(workspaceId, path, doc, options, destination);
+				this.getCache(workspaceId, destination, function(data) {
+					Extension.compile(workspaceId, destination, data);
 				});
 			}
 		},

@@ -12,15 +12,12 @@ LESS compile options can be set in the first line of the edited file:
 out: compiled file destination
 
     // out: ., app.css, ../style.css
-    //. - same path with css extension
+    // . - same path with css extension
+    // something.less - will compile this file instead
 	
 compress: compress compiled file?
 
     // compress: true - default, false
-
-main: adds a master file before compiled file
-
-    // main: main.less, ../master.less
 
 importing files
 
