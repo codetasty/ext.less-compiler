@@ -19,6 +19,10 @@ compress: compress compiled file?
 
     // compress: true - default, false
 
+underscores: prefix imported files with underscores 
+
+    // underscores: true
+
 importing files
 
     @import "variables";
