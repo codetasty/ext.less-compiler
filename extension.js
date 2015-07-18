@@ -70,6 +70,8 @@ define(function(require, exports, module) {
 				FileManager.getCache(workspaceId, destination, function(data) {
 					Extension.compile(workspaceId, destination, data);
 				});
+				
+				return false;
 			}
 			
 			this.importWorkspace = workspaceId;
