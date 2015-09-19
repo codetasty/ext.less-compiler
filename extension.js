@@ -86,7 +86,7 @@ define(function(require, exports, module) {
 				if (e) {
 					Notification.open({
 						type: 'error',
-						title: _('LESS compilation failed.'),
+						title: 'LESS compilation failed.',
 						description: e.message + ' on line ' + e.line
 					});
 					return false;
