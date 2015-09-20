@@ -82,13 +82,30 @@ define(function(require, exports, module) {
 				filename: path,
 				compress: typeof options.compress != 'undefined' ? options.compress : true,
 				async: true,
-			}, function(e, output) {
-				if (e) {
+			}, function(error, output) {
+				if (error) {
 					Notification.open({
 						type: 'error',
 						title: 'LESS compilation failed.',
-						description: e.message + ' on line ' + e.line
+						description: error.message + ' on line ' + error.line
 					});
+					return false;
+				}
+				
+				if (options.plugin && Code.extensions[options.plugin]) {
+					Code.extensions[options.plugin].plugin(output.css, function(output, error) {
+						if (error) {
+							Notification.open({
+								type: 'error',
+								title: 'LESS compilation failed (' + options.plugin + ').',
+								description: error.message + ' on line ' + error.line
+							});
+							return false;
+						}
+						
+						FileManager.saveFile(workspaceId, destination, output, null);
+					});
+					
 					return false;
 				}
 				

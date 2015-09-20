@@ -23,6 +23,10 @@ underscores: prefix imported files with underscores
 
     // underscores: true
 
+plugin: inject plugin (must be installed)
+
+    // plugin: css-autoprefixer
+
 importing files
 
     @import "variables";
