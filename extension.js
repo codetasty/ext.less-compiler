@@ -86,8 +86,9 @@ define(function(require, exports, module) {
 				if (error) {
 					Notification.open({
 						type: 'error',
-						title: 'LESS compilation failed.',
-						description: error.message + ' on line ' + error.line
+						title: 'LESS compilation failed',
+						description: error.message + ' on line ' + error.line,
+						autoClose: true
 					});
 					return false;
 				}
@@ -97,8 +98,9 @@ define(function(require, exports, module) {
 						if (error) {
 							Notification.open({
 								type: 'error',
-								title: 'LESS compilation failed (' + options.plugin + ').',
-								description: error.message + ' on line ' + error.line
+								title: 'LESS compilation failed (' + options.plugin + ')',
+								description: error.message + ' on line ' + error.line,
+								autoClose: true
 							});
 							return false;
 						}
