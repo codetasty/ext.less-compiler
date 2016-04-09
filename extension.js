@@ -1,3 +1,8 @@
+less = {
+	env: "development",
+	async: true
+};
+
 define(function(require, exports, module) {
 	var ExtensionManager = require('code/extensionManager');
 	
