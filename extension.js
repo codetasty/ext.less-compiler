@@ -36,8 +36,8 @@ define(function(require, exports, module) {
 				
 				toLoad = FileManager.parsePath(Extension.importPath, toLoad);
 				
-				FileManager.getCache(Extension.importWorkspace, toLoad, function(data) {
-					callback(null, { contents: data, filename: toLoad, webInfo: { lastModified: new Date() }});
+				FileManager.getCache(Extension.importWorkspace, toLoad, function(data, err) {
+					callback(err, { contents: data, filename: toLoad, webInfo: { lastModified: new Date() }});
 				});
 			};
 			
