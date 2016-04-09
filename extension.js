@@ -72,7 +72,16 @@ define(function(require, exports, module) {
 			
 			
 			if (destination.match(/\.less$/)) {
-				FileManager.getCache(workspaceId, destination, function(data) {
+				FileManager.getCache(workspaceId, destination, function(data, err) {
+					if (err) {
+						return Notification.open({
+							type: 'error',
+							title: 'LESS compilation failed',
+							description: err.message,
+							autoClose: true
+						});
+					}
+					
 					Extension.compile(workspaceId, destination, data);
 				});
 				
