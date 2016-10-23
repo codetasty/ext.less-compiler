@@ -92,11 +92,22 @@ define(function(require, exports, module) {
 			this.importPath = path;
 			this._underscores = options.underscores || false;
 			
+			var $notification = Notification.open({
+				type: 'default',
+				title: 'LESS compilation',
+				description: 'Compiling <strong>' + path + '</strong>',
+				onClose: function() {
+					
+				}
+			});
+			
 			Less.render(doc, {
 				filename: path,
 				compress: typeof options.compress != 'undefined' ? options.compress : true,
 				async: true,
 			}, function(error, output) {
+				$notification.trigger('close');
+				
 				if (error) {
 					Notification.open({
 						type: 'error',
