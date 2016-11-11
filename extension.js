@@ -46,11 +46,15 @@ define(function(require, exports, module) {
 				});
 			};
 			
-			EditorSession.on('save', function(e) {
-				if (self._exts.indexOf(e.storage.extension) !== -1) {
-					Extension.compile(e.storage.workspaceId, e.storage.path, e.session.data.getValue());
-				}
-			});
+			EditorSession.on('save', this.onSave);
+		},
+		destroy: function() {
+			EditorSession.off('save', this.onSave);
+		},
+		onSave: function(e) {
+			if (Extension._exts.indexOf(e.storage.extension) !== -1) {
+				Extension.compile(e.storage.workspaceId, e.storage.path, e.session.data.getValue());
+			}
 		},
 		_exts: ['less'],
 		_underscores: false,
