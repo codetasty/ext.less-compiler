@@ -12,10 +12,11 @@ define(function(require, exports, module) {
 	var Notification = require('core/notification');
 	var Fn = require('core/fn');
 	var FileManager = require('core/fileManager');
+	var Crypto = require('core/crypto');
 	
 	var Less = require('./less');
 	
-	var EditorSession = require('modules/editor/ext/session');
+	var EditorEditors = require('modules/editor/ext/editors');
 	
 	var Extension = ExtensionManager.register({
 		name: 'less-compiler',
@@ -46,14 +47,14 @@ define(function(require, exports, module) {
 				});
 			};
 			
-			EditorSession.on('save', this.onSave);
+			EditorEditors.on('save', this.onSave);
 		},
 		destroy: function() {
-			EditorSession.off('save', this.onSave);
+			EditorEditors.off('save', this.onSave);
 		},
-		onSave: function(e) {
-			if (Extension._exts.indexOf(e.storage.extension) !== -1) {
-				Extension.compile(e.storage.workspaceId, e.storage.path, e.session.data.getValue());
+		onSave: function(session, value) {
+			if (Extension._exts.indexOf(session.storage.extension) !== -1) {
+				Extension.compile(session.storage.workspaceId, session.storage.path, value);
 			}
 		},
 		_exts: ['less'],
@@ -96,24 +97,27 @@ define(function(require, exports, module) {
 			this.importPath = path;
 			this._underscores = options.underscores || false;
 			
-			var $notification = Notification.open({
-				type: 'default',
-				title: 'LESS compilation',
-				description: 'Compiling <strong>' + path + '</strong>',
-				onClose: function() {
-					
-				}
-			});
+			var notification;
+			
+			if (EditorEditors.settings.displayCompilationNotification) {
+				notification = Notification.open({
+					id: Extension.name + ':' + workspaceId + ':' + destination,
+					type: 'default',
+					title: 'LESS compilation',
+					description: 'Compiling <strong>' + path + '</strong>',
+				});
+			}
 			
 			Less.render(doc, {
 				filename: path,
 				compress: typeof options.compress != 'undefined' ? options.compress : true,
 				async: true,
 			}, function(error, output) {
-				$notification.trigger('close');
-				
 				if (error) {
+					notification && notification.close();
+					
 					Notification.open({
+						id: Extension.name + ':' + Crypto.sha256(workspaceId + ':' + destination + ':' + error.message),
 						type: 'error',
 						title: 'LESS compilation failed',
 						description: error.message + ' on line ' + error.line,
@@ -125,7 +129,10 @@ define(function(require, exports, module) {
 				if (options.plugin && App.extensions[options.plugin]) {
 					App.extensions[options.plugin].plugin(output.css, function(output, error) {
 						if (error) {
+							notification && notification.close();
+							
 							Notification.open({
+								id: Extension.name + ':' + Crypto.sha256(workspaceId + ':' + destination + ':' + error.message),
 								type: 'error',
 								title: 'LESS compilation failed (' + options.plugin + ')',
 								description: error.message + ' on line ' + error.line,
@@ -134,13 +141,31 @@ define(function(require, exports, module) {
 							return false;
 						}
 						
-						FileManager.saveFile(workspaceId, destination, output, null);
+						FileManager.save({
+							id: workspaceId,
+							path: destination,
+							data: function() {
+								notification && notification.close();
+							},
+							error: function() {
+								notification && notification.close();
+							}
+						}, output);
 					});
 					
 					return false;
 				}
 				
-				FileManager.saveFile(workspaceId, destination, output.css, null);
+				FileManager.save({
+					id: workspaceId,
+					path: destination,
+					data: function() {
+						notification && notification.close();
+					},
+					error: function() {
+						notification && notification.close();
+					}
+				}, output.css);
 			});
 		}
 	});
