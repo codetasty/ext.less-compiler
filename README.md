@@ -4,7 +4,7 @@ less-compiler is an extension for the code editor CodeTasty that adds automatic 
 
 ## Configuration
 
-### Configuration file (recommended)
+### 1, Configuration file (recommended)
 
 Create or edit **codetasty.json** file in workspace root.
 
@@ -24,43 +24,43 @@ Create or edit **codetasty.json** file in workspace root.
 }
 ```
 
-### files
+#### files
 Type: `Array|Object`
 
 Can be also array to compile multiple files.
 
-### files.watch
+#### files.watch
 Type: `Array`, Required
 
 List of files to watch. Can include asterisk (*) to match any file name.
 
-### files.source
+#### files.source
 Type: `String`, Required
 
 Source file that should be compiled.
 
-### files.output
+#### files.output
 Type: `String`, Required
 
 Destination where the compiled output is saved.
 
-### files.compress
+#### files.compress
 Type: `Bool`, Default: `true`
 
 Type: `String`
 
-### files.plugin
+#### files.plugin
 Type: `String|Array`
 
 Injects plugin, must be installed (e.g. "css-autoprefixer").
 
-### Inline comment (deprecated)
+### 2, Inline comment (deprecated)
 
 Compile options can be set in the first line of the edited file, separated by comma.
 
     // out: ../css/style.css, compress: true
 
-#### out:
+#### out
 Type: `String`, Required
 
 Sets output file.
