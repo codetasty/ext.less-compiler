@@ -12,162 +12,75 @@ define(function(require, exports, module) {
 	var Notification = require('core/notification');
 	var Fn = require('core/fn');
 	var FileManager = require('core/fileManager');
+	var Utils = require('core/utils');
 	var Crypto = require('core/crypto');
 	
 	var Less = require('./less');
 	
 	var EditorEditors = require('modules/editor/ext/editors');
+	var EditorCompiler = require('modules/editor/ext/compiler');
 	
 	var Extension = ExtensionManager.register({
 		name: 'less-compiler',
-		
 	}, {
+		compilerName: 'LESS',
+		watcher: null,
 		init: function() {
 			var self = this;
+			
+			this.watcher = EditorCompiler.addWatcher(this.name, {
+				extensions: ['less'],
+				outputExtension: 'css',
+				comments: true,
+				watch: this.onWatch.bind(this),
+			});
+			
 			Less.FileManager.prototype.loadFile = function(filename, currentDirectory, options, environment, callback) {
-				var ext = Fn.pathinfo(Extension.importPath).extension;
-				var reqExt = Fn.pathinfo(filename).extension;
+				var compiler = EditorCompiler.getCompiler(options.rootpath);
 				
-				var toLoad = filename;
+				var extension = filename.substr(filename.lastIndexOf('.')+1);
 				
-				if (!reqExt) {
-					toLoad += '.' + ext;
+				if (!extension) {
+					filename += '.' + compiler.source[0].substr(compiler.source[0].lastIndexOf('.')+1);
 				}
 				
-				if (self._underscores) {
-					toLoad = toLoad.split('/');
-					toLoad[toLoad.length-1] = '_' + toLoad[toLoad.length-1];
-					toLoad = toLoad.join('/');
-				}
+				filename = Utils.path.convert(filename, currentDirectory);
 				
-				toLoad = FileManager.parsePath(Extension.importPath, toLoad);
-				
-				FileManager.getCache(Extension.importWorkspace, toLoad, function(data, err) {
-					callback(err, { contents: data, filename: toLoad, webInfo: { lastModified: new Date() }});
+				FileManager.getCache(compiler.workspaceId, filename, function(data, err) {
+					callback(err, { contents: data, filename: filename, webInfo: { lastModified: new Date() }});
 				});
 			};
-			
-			EditorEditors.on('save', this.onSave);
 		},
 		destroy: function() {
-			EditorEditors.off('save', this.onSave);
+			this.watcher = null;
+			EditorCompiler.removeWatcher(this.name);
+			
+			Less.FileManager.prototype.loadFile = null;
 		},
-		onSave: function(session, value) {
-			if (Extension._exts.indexOf(session.storage.extension) !== -1) {
-				Extension.compile(session.storage.workspaceId, session.storage.path, value);
-			}
+		
+		onWatch: function(workspaceId, obj, session, value) {
+			EditorCompiler.addCompiler(this.watcher, this.compilerName, workspaceId, obj, function(compiler) {
+				compiler.file = this.onFile.bind(this);
+			}.bind(this));
 		},
-		_exts: ['less'],
-		_underscores: false,
-		importWorkspace: null,
-		importPath: '',
-		compile: function(workspaceId, path, doc) {
-			var self = this;
-			var options = FileManager.getFileOptions(doc);
-			
-			if (!options.out) {
-				return false;
-			}
-			
-			var destination = FileManager.parsePath(path, options.out, [this._exts.join('|'), 'css']);
-			
-			if (!destination) {
-				return false;
-			}
-			
-			
-			if (destination.match(/\.less$/)) {
-				FileManager.getCache(workspaceId, destination, function(data, err) {
-					if (err) {
-						return Notification.open({
-							type: 'error',
-							title: 'LESS compilation failed',
-							description: err.message,
-							autoClose: true
-						});
-					}
-					
-					Extension.compile(workspaceId, destination, data);
-				});
-				
-				return false;
-			}
-			
-			this.importWorkspace = workspaceId;
-			this.importPath = path;
-			this._underscores = options.underscores || false;
-			
-			var notification;
-			
-			if (EditorEditors.settings.displayCompilationNotification) {
-				notification = Notification.open({
-					id: Extension.name + ':' + workspaceId + ':' + destination,
-					type: 'default',
-					title: 'LESS compilation',
-					description: 'Compiling <strong>' + path + '</strong>',
-				});
-			}
-			
-			Less.render(doc, {
+		onFile: function(compiler, path, file) {
+			Less.render(file, {
 				filename: path,
-				compress: typeof options.compress != 'undefined' ? options.compress : true,
-				async: true,
+				compress: typeof compiler.options.compress != 'undefined' ? options.compress : true,
+				rootpath: compiler.id,
+				'async': true,
 			}, function(error, output) {
 				if (error) {
-					notification && notification.close();
-					
-					Notification.open({
-						id: Extension.name + ':' + Crypto.sha256(workspaceId + ':' + destination + ':' + error.message),
-						type: 'error',
-						title: 'LESS compilation failed',
-						description: error.message + ' on line ' + error.line,
-						autoClose: true
-					});
-					return false;
+					compiler.destroy(new Error(
+							__('%s on <strong>%s:%s</strong> in file <strong>%s</strong>.', error.message, error.line, error.pos, Utils.path.humanize(path))
+					));
+					EditorCompiler.removeCompiler(compiler);
+					return;
 				}
 				
-				if (options.plugin && App.extensions[options.plugin]) {
-					App.extensions[options.plugin].plugin(output.css, function(output, error) {
-						if (error) {
-							notification && notification.close();
-							
-							Notification.open({
-								id: Extension.name + ':' + Crypto.sha256(workspaceId + ':' + destination + ':' + error.message),
-								type: 'error',
-								title: 'LESS compilation failed (' + options.plugin + ')',
-								description: error.message + ' on line ' + error.line,
-								autoClose: true
-							});
-							return false;
-						}
-						
-						FileManager.save({
-							id: workspaceId,
-							path: destination,
-							data: function() {
-								notification && notification.close();
-							},
-							error: function() {
-								notification && notification.close();
-							}
-						}, output);
-					});
-					
-					return false;
-				}
-				
-				FileManager.save({
-					id: workspaceId,
-					path: destination,
-					data: function() {
-						notification && notification.close();
-					},
-					error: function() {
-						notification && notification.close();
-					}
-				}, output.css);
+				EditorCompiler.saveOutput(compiler, output.css);
 			});
-		}
+		},
 	});
 
 	module.exports = Extension;

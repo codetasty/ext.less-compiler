@@ -1,32 +1,83 @@
-# less-compiler
+# LESS Compiler
 
 less-compiler is an extension for the code editor CodeTasty that adds automatic compilation of LESS files upon saving.
 
+## Configuration
 
-### Compile Options
+### Configuration file (recommended)
 
-LESS compile options can be set in the first line of the edited file:
+Create or edit **codetasty.json** file in workspace root.
+
+```
+{
+    "extension": {
+        "less-compiler": {
+            "files": {
+                "watch": [
+                    "less/*.less"
+                ]
+                "source": "less/app.less",
+                "output": "build/app.css"
+            }
+        }
+    }
+}
+```
+
+### files
+Type: `Array|Object`
+
+Can be also array to compile multiple files.
+
+### files.watch
+Type: `Array`, Required
+
+List of files to watch. Can include asterisk (*) to match any file name.
+
+### files.source
+Type: `String`, Required
+
+Source file that should be compiled.
+
+### files.output
+Type: `String`, Required
+
+Destination where the compiled output is saved.
+
+### files.compress
+Type: `Bool`, Default: `true`
+
+Type: `String`
+
+### files.plugin
+Type: `String|Array`
+
+Injects plugin, must be installed (e.g. "css-autoprefixer").
+
+### Inline comment (deprecated)
+
+Compile options can be set in the first line of the edited file, separated by comma.
 
     // out: ../css/style.css, compress: true
 
-out: compiled file destination
+#### out:
+Type: `String`, Required
+
+Sets output file.
 
     // out: ., app.css, ../style.css
     // . - same path with css extension
     // something.less - will compile this file instead
-	
-compress: compress compiled file?
 
-    // compress: true - default, false
+#### compress
+Type: `Bool`, Default: `true`
 
-underscores: prefix imported files with underscores 
+Toggles if file should be compressed.
 
-    // underscores: true
+    // compress: false
 
-plugin: inject plugin (must be installed)
+#### plugin
+Type: `String`, Default: `null`
+Injects plugin, must be installed.
 
     // plugin: css-autoprefixer
-
-importing files
-
-    @import "variables";
