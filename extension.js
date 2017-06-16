@@ -1,19 +1,14 @@
 less = {
 	env: "development",
-	async: true
+	'async': true
 };
 
 define(function(require, exports, module) {
 	var ExtensionManager = require('core/extensionManager');
 	
 	var App = require('core/app');
-	var Socket = require('core/socket');
-	var Workspace = require('core/workspace');
-	var Notification = require('core/notification');
-	var Fn = require('core/fn');
 	var FileManager = require('core/fileManager');
 	var Utils = require('core/utils');
-	var Crypto = require('core/crypto');
 	
 	var Less = require('./less');
 	
@@ -36,12 +31,16 @@ define(function(require, exports, module) {
 			});
 			
 			Less.FileManager.prototype.loadFile = function(filename, currentDirectory, options, environment, callback) {
-				var compiler = EditorCompiler.getCompiler(options.rootpath);
+				var compiler = EditorCompiler.getCompiler(options.paths.__compilerId);
 				
-				var extension = filename.substr(filename.lastIndexOf('.')+1);
+				if (!compiler) {
+					return callback(new Error('Compiler crashed.'));
+				}
+				
+				var extension = Utils.path.extension(filename);
 				
 				if (!extension) {
-					filename += '.' + compiler.source[0].substr(compiler.source[0].lastIndexOf('.')+1);
+					filename += '.' + Utils.path.extension(compiler.source[0]);
 				}
 				
 				filename = Utils.path.convert(filename, currentDirectory);
@@ -57,7 +56,6 @@ define(function(require, exports, module) {
 			
 			Less.FileManager.prototype.loadFile = null;
 		},
-		
 		onWatch: function(workspaceId, obj, session, value) {
 			EditorCompiler.addCompiler(this.watcher, this.compilerName, workspaceId, obj, function(compiler) {
 				compiler.file = this.onFile.bind(this);
@@ -66,8 +64,10 @@ define(function(require, exports, module) {
 		onFile: function(compiler, path, file) {
 			Less.render(file, {
 				filename: path,
-				compress: typeof compiler.options.compress != 'undefined' ? options.compress : true,
-				rootpath: compiler.id,
+				compress: typeof compiler.options.compress != 'undefined' ? compiler.options.compress : true,
+				paths: {
+					__compilerId: compiler.id,
+				},
 				'async': true,
 			}, function(error, output) {
 				if (error) {
