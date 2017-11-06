@@ -1,4 +1,7 @@
-less = {
+/* global define, $ */
+"use strict";
+
+window.less = {
 	env: "development",
 	'async': true
 };
@@ -15,12 +18,20 @@ define(function(require, exports, module) {
 	var EditorEditors = require('modules/editor/ext/editors');
 	var EditorCompiler = require('modules/editor/ext/compiler');
 	
-	var Extension = ExtensionManager.register({
-		name: 'less-compiler',
-	}, {
-		compilerName: 'LESS',
-		watcher: null,
-		init: function() {
+	class Extension extends ExtensionManager.Extension {
+		constructor() {
+			super({
+				name: 'less-compiler',
+			});
+			
+			this.watcher = null;
+			
+			this.compilerName = 'LESS';
+		}
+		
+		init() {
+			super.init();
+			
 			var self = this;
 			
 			this.watcher = EditorCompiler.addWatcher(this.name, {
@@ -45,23 +56,30 @@ define(function(require, exports, module) {
 				
 				filename = Utils.path.convert(filename, currentDirectory);
 				
-				FileManager.getCache(compiler.workspaceId, filename, function(data, err) {
-					callback(err, { contents: data, filename: filename, webInfo: { lastModified: new Date() }});
+				FileManager.getCache(compiler.workspaceId, filename).then(data => {
+					callback(null, { contents: data, filename: filename, webInfo: { lastModified: new Date() }});
+				}).catch(e => {
+					callback(e, { contents: null, filename: filename, webInfo: { lastModified: new Date() }});
 				});
 			};
-		},
-		destroy: function() {
+		}
+		
+		destroy() {
+			super.destroy();
+			
 			this.watcher = null;
 			EditorCompiler.removeWatcher(this.name);
 			
 			Less.FileManager.prototype.loadFile = null;
-		},
-		onWatch: function(workspaceId, obj, session, value) {
+		}
+		
+		onWatch(workspaceId, obj, session, value) {
 			EditorCompiler.addCompiler(this.watcher, this.compilerName, workspaceId, obj, function(compiler) {
 				compiler.file = this.onFile.bind(this);
 			}.bind(this));
-		},
-		onFile: function(compiler, path, file) {
+		}
+		
+		onFile(compiler, path, file) {
 			Less.render(file, {
 				filename: path,
 				compress: typeof compiler.options.compress != 'undefined' ? compiler.options.compress : true,
@@ -72,7 +90,7 @@ define(function(require, exports, module) {
 			}, function(error, output) {
 				if (error) {
 					compiler.destroy(new Error(
-							__('%s on <strong>%s:%s</strong> in file <strong>%s</strong>.', error.message, error.line, error.pos, Utils.path.humanize(path))
+							'%s on <strong>%s:%s</strong> in file <strong>%s</strong>.'.sprintfEscape(error.message, error.line, error.pos, path)
 					));
 					EditorCompiler.removeCompiler(compiler);
 					return;
@@ -80,8 +98,8 @@ define(function(require, exports, module) {
 				
 				EditorCompiler.saveOutput(compiler, output.css);
 			});
-		},
-	});
+		}
+	}
 
-	module.exports = Extension;
+	module.exports = new Extension();
 });
